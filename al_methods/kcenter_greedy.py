@@ -1,5 +1,5 @@
 import numpy as np
-from .strategy import Strategy
+from ..strategy import Strategy
 from sklearn.neighbors import NearestNeighbors
 
 class KCenterGreedy(Strategy):
