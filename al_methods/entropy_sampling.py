@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from ..strategy import Strategy
+from strategy_utils_framework.strategy import Strategy
 
 class EntropySampling(Strategy):
 	def __init__(self, X, Y, X_te, Y_te, idxs_lb, net, handler, args):

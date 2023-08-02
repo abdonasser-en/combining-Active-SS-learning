@@ -6,9 +6,9 @@ Reference:
 
 import torch.nn.functional as F
 import numpy as np
-from ..strategy import Strategy
+from strategy_utils_framework.strategy import Strategy
 
-from utils import print_log, time_string, AverageMeter, RecorderMeter, convert_secs2time
+from strategy_utils_framework.utils import print_log, time_string, AverageMeter, RecorderMeter, convert_secs2time
 
 # Torch
 import torch

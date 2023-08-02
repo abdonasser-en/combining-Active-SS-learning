@@ -8,8 +8,8 @@ import torch.nn.functional as F
 import os
 import numpy as np
 import time
-from strategy import Strategy
-from utils import time_string, AverageMeter, RecorderMeter, convert_secs2time, adjust_learning_rate, dice_loss, dice_score
+from strategy_utils_framework.strategy import Strategy
+from strategy_utils_framework.utils import time_string, AverageMeter, RecorderMeter, convert_secs2time, adjust_learning_rate, dice_loss, dice_score,EarlyStopping
 from torchmetrics.classification import MatthewsCorrCoef
 import random
 import PIL
@@ -18,8 +18,8 @@ import PIL.ImageEnhance
 import PIL.ImageDraw
 from PIL import Image
 from copy import deepcopy
-from prepare_data.transformations import TransformUDA
-from utils import EarlyStopping
+# from prepare_data.transformations import TransformUDA
+
 pseudo_label_threshold = 0.95
 
 
