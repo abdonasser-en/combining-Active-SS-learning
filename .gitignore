@@ -1,1 +1,4 @@
-/dataset
+/datasets
+__pycache__
+/.vscode
+
