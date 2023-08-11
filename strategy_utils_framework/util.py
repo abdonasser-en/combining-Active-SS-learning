@@ -208,7 +208,7 @@ def aug(image, preprocess):
     Returns:
         mixed: Augmented and mixed image.
     """
-    from ..al_methods import augmentations
+    from preprocess import augmentations
     from PIL import Image
     image = Image.fromarray(image)
     aug_list = augmentations.augmentations
