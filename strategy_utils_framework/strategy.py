@@ -70,7 +70,7 @@ class Strategy:
             # exit()
             optimizer.zero_grad()
 
-            out, e1 = self.clf(x)
+            out = self.clf(x)
             nan_mask_out = torch.isnan(y)
             if nan_mask_out.any():
                 raise RuntimeError(f"Found NAN in output indices: ", nan_mask.nonzero())
@@ -100,7 +100,8 @@ class Strategy:
         # self.clf = nn.parallel.DistributedDataParallel(self.clf,
                                                         # find_unused_parameters=True,
                                                         # )
-        self.clf = nn.DataParallel(self.clf).to(self.device)
+        #nn.dataParallel
+        self.clf = self.clf.to(self.device)
         parameters = self.clf.parameters()
         optimizer = optim.SGD(parameters, lr = self.args.lr, weight_decay=5e-4, momentum=self.args.momentum)
 
@@ -150,7 +151,7 @@ class Strategy:
                     best_test_acc = test_acc
                     self.save_model()
             recorder.plot_curve(os.path.join(self.args.save_path, self.args.dataset))
-            self.clf = self.clf.module
+            # self.clf = self.clf.module
 
         best_test_acc = recorder.max_accuracy(istrain=False)
         return best_test_acc                
@@ -167,7 +168,7 @@ class Strategy:
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = x.to(self.device), y.to(self.device) 
-                out, e1 = self.clf(x)
+                out= self.clf(x)
                 pred = out.max(1)[1]                
                 correct +=  (y == pred).sum().item() 
 
@@ -189,7 +190,7 @@ class Strategy:
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = x.to(self.device), y.to(self.device) 
-                out, e1 = self.clf(x)
+                out= self.clf(x)
                 pred = out.max(1)[1]     
                 P[idxs] = pred           
                 correct +=  (y == pred).sum().item() 
@@ -207,7 +208,7 @@ class Strategy:
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = x.to(self.device), y.to(self.device)
-                out, e1 = self.clf(x)
+                out = self.clf(x)
                 prob = F.softmax(out, dim=1)
                 probs[idxs] = prob.cpu().data
         
@@ -226,7 +227,7 @@ class Strategy:
                 print('n_drop {}/{}'.format(i+1, n_drop))
                 for x, y, idxs in loader_te:
                     x, y = x.to(self.device), y.to(self.device) 
-                    out, e1 = self.clf(x)
+                    out= self.clf(x)
                     prob = F.softmax(out, dim=1)
                     probs[idxs] += prob.cpu().data
         probs /= n_drop
@@ -246,57 +247,57 @@ class Strategy:
                 print('n_drop {}/{}'.format(i+1, n_drop))
                 for x, y, idxs in loader_te:
                     x, y = x.to(self.device), y.to(self.device) 
-                    out, e1 = self.clf(x)
+                    out = self.clf(x)
                     probs[i][idxs] += F.softmax(out, dim=1).cpu().data
             return probs
 
-    def get_embedding(self, X, Y):
-        """ get last layer embedding from current model"""
-        transform = self.args.transform_te
-        loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
-                            shuffle=False, **self.args.loader_te_args)
+    # def get_embedding(self, X, Y):
+    #     """ get last layer embedding from current model"""
+    #     transform = self.args.transform_te
+    #     loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
+    #                         shuffle=False, **self.args.loader_te_args)
 
-        self.clf.eval()
+    #     self.clf.eval()
         
-        embedding = torch.zeros([len(Y), 
-                self.clf.module.get_embedding_dim() if isinstance(self.clf, nn.DataParallel) 
-                else self.clf.get_embedding_dim()])
-        with torch.no_grad():
-            for x, y, idxs in loader_te:
-                x, y = x.to(self.device), y.to(self.device) 
-                out, e1 = self.clf(x)
-                embedding[idxs] = e1.data.cpu().float()
+    #     embedding = torch.zeros([len(Y), 
+    #             self.clf.module.get_embedding_dim() if isinstance(self.clf, nn.DataParallel) 
+    #             else self.clf.get_embedding_dim()])
+    #     with torch.no_grad():
+    #         for x, y, idxs in loader_te:
+    #             x, y = x.to(self.device), y.to(self.device) 
+    #             out, e1 = self.clf(x)
+    #             embedding[idxs] = e1.data.cpu().float()
         
-        return embedding
+    #     return embedding
 
 
-    def get_grad_embedding(self, X, Y):
-        """ gradient embedding (assumes cross-entropy loss) of the last layer"""
-        transform = self.args.transform_te 
+    # def get_grad_embedding(self, X, Y):
+    #     """ gradient embedding (assumes cross-entropy loss) of the last layer"""
+    #     transform = self.args.transform_te 
 
-        model = self.clf
-        if isinstance(model, nn.DataParallel):
-            model = model.module
-        embDim = model.get_embedding_dim()
-        model.eval()
-        nLab = len(np.unique(Y))
-        embedding = np.zeros([len(Y), embDim * nLab])
-        loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
-                            shuffle=False, **self.args.loader_te_args)
-        with torch.no_grad():
-            for x, y, idxs in loader_te:
-                x, y = x.to(self.device), y.to(self.device) 
-                cout, out = self.clf(x)
-                out = out.data.cpu().numpy()
-                batchProbs = F.softmax(cout, dim=1).data.cpu().numpy()
-                maxInds = np.argmax(batchProbs,1)
-                for j in range(len(y)):
-                    for c in range(nLab):
-                        if c == maxInds[j]:
-                            embedding[idxs[j]][embDim * c : embDim * (c+1)] = deepcopy(out[j]) * (1 - batchProbs[j][c])
-                        else:
-                            embedding[idxs[j]][embDim * c : embDim * (c+1)] = deepcopy(out[j]) * (-1 * batchProbs[j][c])
-            return torch.Tensor(embedding)
+    #     model = self.clf
+    #     if isinstance(model, nn.DataParallel):
+    #         model = model.module
+    #     embDim = model.get_embedding_dim()
+    #     model.eval()
+    #     nLab = len(np.unique(Y))
+    #     embedding = np.zeros([len(Y), embDim * nLab])
+    #     loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
+    #                         shuffle=False, **self.args.loader_te_args)
+    #     with torch.no_grad():
+    #         for x, y, idxs in loader_te:
+    #             x, y = x.to(self.device), y.to(self.device) 
+    #             cout, out = self.clf(x)
+    #             out = out.data.cpu().numpy()
+    #             batchProbs = F.softmax(cout, dim=1).data.cpu().numpy()
+    #             maxInds = np.argmax(batchProbs,1)
+    #             for j in range(len(y)):
+    #                 for c in range(nLab):
+    #                     if c == maxInds[j]:
+    #                         embedding[idxs[j]][embDim * c : embDim * (c+1)] = deepcopy(out[j]) * (1 - batchProbs[j][c])
+    #                     else:
+    #                         embedding[idxs[j]][embDim * c : embDim * (c+1)] = deepcopy(out[j]) * (-1 * batchProbs[j][c])
+    #         return torch.Tensor(embedding)
     
     def save_model(self):
         # save model and selected index
