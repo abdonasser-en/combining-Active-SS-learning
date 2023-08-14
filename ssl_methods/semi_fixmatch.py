@@ -191,7 +191,7 @@ class TransformUDA(object):
         return self.normalize(weak), self.normalize(strong)
 
 
-class fixmatch:
+class fixmatch(Strategy):
     """
     Our omplementation of the paper: Unsupervised Data Augmentation for Consistency Training
     https://arxiv.org/pdf/1904.12848.pdf
