@@ -35,6 +35,8 @@ class Strategy:
 
         self.net = net.to(self.device)
         self.clf = deepcopy(net.to(self.device))
+        self.query_strategy_al: "QueryStrategyAl | None" = None
+        self.query_strategy_ssl: "QueryStrategySSL | None" = None
 
         # for reproducibility
         self.g = torch.Generator()
@@ -318,4 +320,21 @@ class Strategy:
         self.clf = torch.load(os.path.join(save_path, self.args.strategy+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.pkl'))
         self.idxs_lb = np.load(os.path.join(save_path, self.args.strategy+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.npy'))
 
+    def set_query_strategy_al(self, query_strategy_al: "QueryStrategyAl | None"):
+        self.query_strategy_al = query_strategy_al
 
+    def set_query_strategy_ssl(self, query_strategy_ssl: "QueryStrategySSL | None"):
+        self.query_strategy_ssl = query_strategy_ssl
+
+
+class QueryStrategyAl:
+    def __init__(self, *_, **__) -> None:
+        pass
+    def query(self, strategy: Strategy, n: int) -> torch.Tensor:
+        pass
+
+class QueryStrategySSL:
+    def __init__(self, *_, **__) -> None:
+        pass
+    def query(self, strategy: Strategy, n: int) -> torch.Tensor:
+        pass
