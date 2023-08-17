@@ -191,15 +191,27 @@ class TransformUDA(object):
         return self.normalize(weak), self.normalize(strong)
 
 
-class fixmatch(Strategy):
+class fixmatch:
     """
     Our omplementation of the paper: Unsupervised Data Augmentation for Consistency Training
     https://arxiv.org/pdf/1904.12848.pdf
     Google Research, Brain Team, 2 Carnegie Mellon University
     """
 
-    def __init__(self, X, Y, X_te, Y_te, idxs_lb, net, handler, args):
-        super(fixmatch, self).__init__(X, Y, X_te, Y_te, idxs_lb, net, handler, args)
+    def __init__(self, X, Y, X_te, Y_te, idxs_lb, net, handler, args,n_pool,device,predict,g):
+        # super(fixmatch, self).__init__(X, Y, X_te, Y_te, idxs_lb, net, handler, args)
+        self.X = X
+        self.Y = Y
+        self.X_te = X_te
+        self.Y_te = Y_te
+        self.idxs_lb = idxs_lb
+        self.net = net
+        self.handler = handler
+        self.args = args
+        self.n_pool=n_pool
+        self.device=device
+        self.predict=predict
+        self.g=g
 
     def query(self, n):
         """
@@ -337,3 +349,11 @@ class fixmatch(Strategy):
 
         best_test_acc = recorder.max_accuracy(istrain=False)
         return best_test_acc
+    def seed_worker(self, worker_id):
+        """
+        To preserve reproducibility when num_workers > 1
+        """
+        # https://pytorch.org/docs/stable/notes/randomness.html
+        worker_seed = torch.initial_seed() % 2**32
+        np.random.seed(worker_seed)
+        random.seed(worker_seed)
