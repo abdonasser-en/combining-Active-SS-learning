@@ -35,8 +35,6 @@ class Strategy:
 
         self.net = net.to(self.device)
         self.clf = deepcopy(net.to(self.device))
-        self.query_strategy_al: "QueryStrategyAl | None" = None
-        self.query_strategy_ssl: "QueryStrategySSL | None" = None
 
         # for reproducibility
         self.g = torch.Generator()
