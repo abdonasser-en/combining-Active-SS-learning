@@ -224,7 +224,7 @@ class fixmatch:
         return inds[np.random.permutation(len(inds))][:n]
 
     def _train(self, epoch, loader_tr_labeled, loader_tr_unlabeled, optimizer):
-        self.clf.train()
+        self.net.train()
         accFinal = 0.
         train_loss = 0.
         total_steps = 35000
@@ -237,7 +237,7 @@ class fixmatch:
                 (inputs_u, inputs_u2), _, _ = next(iter_unlabeled)
             input_all = torch.cat((x, inputs_u, inputs_u2)).to(self.device)
             y = y.to(self.device)
-            output_all = self.clf(input_all)
+            output_all = self.net(input_all)
             output_sup = output_all[:len(x)]
             output_unsup = output_all[len(x):]
             output_u, output_u2 = torch.chunk(output_unsup, 2)
@@ -257,7 +257,7 @@ class fixmatch:
             loss.backward()
 
             # clamp gradients, just in case
-            for p in filter(lambda p: p.grad is not None, self.clf.parameters()): p.grad.data.clamp_(min=-.1, max=.1)
+            for p in filter(lambda p: p.grad is not None, self.net.parameters()): p.grad.data.clamp_(min=-.1, max=.1)
 
             optimizer.step()
 
@@ -267,14 +267,14 @@ class fixmatch:
         return accFinal / len(loader_tr_labeled.dataset.X), train_loss
 
     def train(self, alpha=0.1, n_epoch=10, batch_ratio=0.6):
-        self.clf =  deepcopy(self.net)
+        # self.clf =  deepcopy(self.net)
         # if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         # self.clf = nn.parallel.DistributedDataParallel(self.clf,
         # find_unused_parameters=True,
         # )
-        self.clf = self.clf.to(self.device)
-        parameters = self.clf.parameters()
+        # self.clf = self.clf.to(self.device)
+        parameters = self.net.parameters()
         optimizer = optim.SGD(parameters, lr=self.args.lr, weight_decay=5e-4, momentum=self.args.momentum)
 
         idxs_train = np.arange(self.n_pool)[self.idxs_lb]
