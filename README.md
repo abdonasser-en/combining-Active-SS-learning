@@ -1,4 +1,4 @@
-# <picture> <source media="(prefers-color-scheme: dark)" srcset="assets/logo_w.png"> <img alt="Shows an illustrated sun in light color mode and a moon with stars in dark color mode." src="assets/logo_b.png">
+# <picture> <source media="(prefers-color-scheme: dark)" srcset="assets/logo_b.png"> <img alt="Shows an illustrated sun in light color mode and a moon with stars in dark color mode." src="assets/logo_w.png">
  </picture>
 
 
