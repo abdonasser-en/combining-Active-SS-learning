@@ -16,7 +16,7 @@ class RandomSampling:
         self.n_pool=n_pool
         self.device=device
 
-def query(self, n):
-    inds = np.where(self.idxs_lb==0)[0]
-    return inds[np.random.permutation(len(inds))][:n]
+    def query(self, n):
+        inds = np.where(self.idxs_lb==0)[0]
+        return inds[np.random.permutation(len(inds))][:n]
 
