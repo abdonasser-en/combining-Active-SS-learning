@@ -34,7 +34,7 @@ class Strategy:
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.net = net.to(self.device)
-        self.clf = deepcopy(net.to(self.device))
+        
 
         # for reproducibility
         self.g = torch.Generator()
@@ -57,7 +57,7 @@ class Strategy:
         self.idxs_lb = idxs_lb
 
     def _train(self, epoch, loader_tr, optimizer):
-        self.clf.train()
+        self.net.train()
 
         accFinal = 0.
         train_loss = 0.
@@ -70,7 +70,7 @@ class Strategy:
             # exit()
             optimizer.zero_grad()
 
-            out = self.clf(x)
+            out = self.net(x)
             nan_mask_out = torch.isnan(y)
             if nan_mask_out.any():
                 raise RuntimeError(f"Found NAN in output indices: ", nan_mask.nonzero())
@@ -83,7 +83,7 @@ class Strategy:
             loss.backward()
             
             # clamp gradients, just in case
-            for p in filter(lambda p: p.grad is not None, self.clf.parameters()): p.grad.data.clamp_(min=-.1, max=.1)
+            for p in filter(lambda p: p.grad is not None, self.net.parameters()): p.grad.data.clamp_(min=-.1, max=.1)
 
             optimizer.step()
             
@@ -94,15 +94,15 @@ class Strategy:
 
     
     def train(self, alpha=0.1, n_epoch=10):
-        self.clf =  deepcopy(self.net)
+        # self.clf =  deepcopy(self.net)
         # if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         # self.clf = nn.parallel.DistributedDataParallel(self.clf,
                                                         # find_unused_parameters=True,
                                                         # )
         #nn.dataParallel
-        self.clf = self.clf.to(self.device)
-        parameters = self.clf.parameters()
+        # self.clf = self.clf.to(self.device)
+        parameters = self.net.parameters()
         optimizer = optim.SGD(parameters, lr = self.args.lr, weight_decay=5e-4, momentum=self.args.momentum)
 
         idxs_train = np.arange(self.n_pool)[self.idxs_lb]
@@ -162,13 +162,13 @@ class Strategy:
         loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True, 
                         shuffle=False, **self.args.loader_te_args)
         
-        self.clf.eval()
+        self.net.eval()
 
         correct = 0
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = x.to(self.device), y.to(self.device) 
-                out= self.clf(x)
+                out= self.net(x)
                 pred = out.max(1)[1]                
                 correct +=  (y == pred).sum().item() 
 
@@ -183,14 +183,14 @@ class Strategy:
 
         P = torch.zeros(len(X)).long().to(self.device)
 
-        self.clf.eval()
+        self.net.eval()
 
 
         correct = 0
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = x.to(self.device), y.to(self.device) 
-                out= self.clf(x)
+                out= self.net(x)
                 pred = out.max(1)[1]     
                 P[idxs] = pred           
                 correct +=  (y == pred).sum().item() 
@@ -202,13 +202,13 @@ class Strategy:
         loader_te = DataLoader(self.handler(X, Y, 
                         transform=transform), shuffle=False, pin_memory=True, **self.args.loader_te_args)
 
-        self.clf.eval()
+        self.net.eval()
 
         probs = torch.zeros([len(Y), len(np.unique(self.Y))])
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = x.to(self.device), y.to(self.device)
-                out = self.clf(x)
+                out = self.net(x)
                 prob = F.softmax(out, dim=1)
                 probs[idxs] = prob.cpu().data
         
@@ -219,7 +219,7 @@ class Strategy:
         loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
                             shuffle=False, **self.args.loader_te_args)
 
-        self.clf.train()
+        self.net.train()
 
         probs = torch.zeros([len(Y), len(np.unique(Y))])
         with torch.no_grad():
@@ -227,7 +227,7 @@ class Strategy:
                 print('n_drop {}/{}'.format(i+1, n_drop))
                 for x, y, idxs in loader_te:
                     x, y = x.to(self.device), y.to(self.device) 
-                    out= self.clf(x)
+                    out= self.net(x)
                     prob = F.softmax(out, dim=1)
                     probs[idxs] += prob.cpu().data
         probs /= n_drop
@@ -239,7 +239,7 @@ class Strategy:
         loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
                             shuffle=False, **self.args.loader_te_args)
 
-        self.clf.train()
+        self.net.train()
 
         probs = torch.zeros([n_drop, len(Y), len(np.unique(Y))])
         with torch.no_grad():
@@ -247,7 +247,7 @@ class Strategy:
                 print('n_drop {}/{}'.format(i+1, n_drop))
                 for x, y, idxs in loader_te:
                     x, y = x.to(self.device), y.to(self.device) 
-                    out = self.clf(x)
+                    out = self.net(x)
                     probs[i][idxs] += F.softmax(out, dim=1).cpu().data
             return probs
 
@@ -257,7 +257,7 @@ class Strategy:
     #     loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
     #                         shuffle=False, **self.args.loader_te_args)
 
-    #     self.clf.eval()
+    #     self.net.eval()
         
     #     embedding = torch.zeros([len(Y), 
     #             self.clf.module.get_embedding_dim() if isinstance(self.clf, nn.DataParallel) 
