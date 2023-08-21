@@ -251,53 +251,6 @@ class Strategy:
                     probs[i][idxs] += F.softmax(out, dim=1).cpu().data
             return probs
 
-    # def get_embedding(self, X, Y):
-    #     """ get last layer embedding from current model"""
-    #     transform = self.args.transform_te
-    #     loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
-    #                         shuffle=False, **self.args.loader_te_args)
-
-    #     self.net.eval()
-        
-    #     embedding = torch.zeros([len(Y), 
-    #             self.clf.module.get_embedding_dim() if isinstance(self.clf, nn.DataParallel) 
-    #             else self.clf.get_embedding_dim()])
-    #     with torch.no_grad():
-    #         for x, y, idxs in loader_te:
-    #             x, y = x.to(self.device), y.to(self.device) 
-    #             out, e1 = self.clf(x)
-    #             embedding[idxs] = e1.data.cpu().float()
-        
-    #     return embedding
-
-
-    # def get_grad_embedding(self, X, Y):
-    #     """ gradient embedding (assumes cross-entropy loss) of the last layer"""
-    #     transform = self.args.transform_te 
-
-    #     model = self.clf
-    #     if isinstance(model, nn.DataParallel):
-    #         model = model.module
-    #     embDim = model.get_embedding_dim()
-    #     model.eval()
-    #     nLab = len(np.unique(Y))
-    #     embedding = np.zeros([len(Y), embDim * nLab])
-    #     loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
-    #                         shuffle=False, **self.args.loader_te_args)
-    #     with torch.no_grad():
-    #         for x, y, idxs in loader_te:
-    #             x, y = x.to(self.device), y.to(self.device) 
-    #             cout, out = self.clf(x)
-    #             out = out.data.cpu().numpy()
-    #             batchProbs = F.softmax(cout, dim=1).data.cpu().numpy()
-    #             maxInds = np.argmax(batchProbs,1)
-    #             for j in range(len(y)):
-    #                 for c in range(nLab):
-    #                     if c == maxInds[j]:
-    #                         embedding[idxs[j]][embDim * c : embDim * (c+1)] = deepcopy(out[j]) * (1 - batchProbs[j][c])
-    #                     else:
-    #                         embedding[idxs[j]][embDim * c : embDim * (c+1)] = deepcopy(out[j]) * (-1 * batchProbs[j][c])
-    #         return torch.Tensor(embedding)
     
     def save_model(self):
         # save model and selected index
@@ -318,21 +271,5 @@ class Strategy:
         self.clf = torch.load(os.path.join(save_path, self.args.strategy+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.pkl'))
         self.idxs_lb = np.load(os.path.join(save_path, self.args.strategy+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.npy'))
 
-    def set_query_strategy_al(self, query_strategy_al: "QueryStrategyAl | None"):
-        self.query_strategy_al = query_strategy_al
+  
 
-    def set_query_strategy_ssl(self, query_strategy_ssl: "QueryStrategySSL | None"):
-        self.query_strategy_ssl = query_strategy_ssl
-
-
-class QueryStrategyAl:
-    def __init__(self, *_, **__) -> None:
-        pass
-    def query(self, strategy: Strategy, n: int) -> torch.Tensor:
-        pass
-
-class QueryStrategySSL:
-    def __init__(self, *_, **__) -> None:
-        pass
-    def query(self, strategy: Strategy, n: int) -> torch.Tensor:
-        pass
