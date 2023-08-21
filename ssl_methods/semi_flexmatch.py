@@ -7,7 +7,6 @@ import torch.nn.functional as F
 import os
 import numpy as np
 import time
-#from strategy_utils_framework.strategy import Strategy
 from strategy_utils_framework.utils import time_string, AverageMeter, RecorderMeter, convert_secs2time, adjust_learning_rate
 import random
 import PIL
@@ -15,10 +14,9 @@ import PIL.ImageOps
 import PIL.ImageEnhance
 import PIL.ImageDraw
 from PIL import Image
+from collections import Counter
 from copy import deepcopy
 
-pseudo_label_threshold = 0.95
-pseudo_label_temperature = 1
 unsup_ratio = 7
 
 
@@ -134,7 +132,7 @@ class RandAugmentMC(object):
         v = int(v * img.size[1])
         return img.transform(img.size, PIL.Image.AFFINE, (1, 0, 0, 0, 1, v))
 
-    def __init__(self, n, m, size,channels):
+    def __init__(self, n, m, size, channels):
         assert n >= 1
         assert 1 <= m <= 10
         self.n = n
@@ -191,7 +189,7 @@ class TransformUDA(object):
         return self.normalize(weak), self.normalize(strong)
 
 
-class fixmatch:
+class flexmatch:
     """
     Our omplementation of the paper: Unsupervised Data Augmentation for Consistency Training
     https://arxiv.org/pdf/1904.12848.pdf
@@ -199,7 +197,7 @@ class fixmatch:
     """
 
     def __init__(self, X, Y, X_te, Y_te, idxs_lb, net, handler, args,n_pool,device,predict,g):
-        # super(fixmatch, self).__init__(X, Y, X_te, Y_te, idxs_lb, net, handler, args)
+        #super(flexmatch, self).__init__(X, Y, X_te, Y_te, idxs_lb, net, handler, args)
         self.X = X
         self.Y = Y
         self.X_te = X_te
@@ -212,6 +210,7 @@ class fixmatch:
         self.device=device
         self.predict=predict
         self.g=g
+        self.it = 0
 
     def query(self, n):
         """
@@ -224,28 +223,43 @@ class fixmatch:
         return inds[np.random.permutation(len(inds))][:n]
 
     def _train(self, epoch, loader_tr_labeled, loader_tr_unlabeled, optimizer):
-        self.net.train()
+        self.clf.train()
         accFinal = 0.
         train_loss = 0.
-        total_steps = 35000
         iter_unlabeled = iter(loader_tr_unlabeled)
         for batch_idx, (x, y, idxs) in enumerate(loader_tr_labeled):
             try:
-                (inputs_u, inputs_u2), _, _ = next(iter_unlabeled)
+                (inputs_u, inputs_u2), _, idx = next(iter_unlabeled)
             except StopIteration:
                 iter_unlabeled = iter(loader_tr_unlabeled)
-                (inputs_u, inputs_u2), _, _ = next(iter_unlabeled)
+                (inputs_u, inputs_u2), _, idx = next(iter_unlabeled)
+            # save_image(inputs_u, fp='/research/dept8/msc/zxwang21/images/img_original_{}.png'.format(batch_idx))
+            # save_image(inputs_u2, fp='/research/dept8/msc/zxwang21/images/img_aug_{}.png'.format(batch_idx))
+
+            ulb_dset = idx, inputs_u, inputs_u2
+            selected_label = torch.ones((len(ulb_dset),), dtype=torch.long, ) * -1
+            selected_label = selected_label.to(self.device)
+            classwise_acc = torch.zeros((10,)).to(self.device)
+            pseudo_counter = Counter(selected_label.tolist())
+
+            if max(pseudo_counter.values()) < len(ulb_dset):  # not all(5w) -1
+                for i in range(10):
+                    classwise_acc[i] = pseudo_counter[i] / max(pseudo_counter.values())
+
             input_all = torch.cat((x, inputs_u, inputs_u2)).to(self.device)
             y = y.to(self.device)
-            output_all = self.net(input_all)
+            output_all, _ = self.clf(input_all)
             output_sup = output_all[:len(x)]
             output_unsup = output_all[len(x):]
             output_u, output_u2 = torch.chunk(output_unsup, 2)
-            loss = F.cross_entropy(output_sup, y, reduction='mean')    # loss for supervised learning
-            pseudo_label = torch.softmax(output_u.detach() / pseudo_label_temperature, dim=-1)
+            loss = F.nll_loss(F.log_softmax(output_sup, dim=-1), y, reduction='mean')   # loss for supervised learning
+
+            logits_w = output_u.detach()
+            pseudo_label = torch.softmax(logits_w, dim=-1)
             max_probs, max_idx = torch.max(pseudo_label, dim=-1)
-            mask = max_probs.ge(pseudo_label_threshold).float()
-            masked_loss = F.cross_entropy(output_u2, max_idx, reduction="none") * mask
+            p_cutoff = self.it
+            mask = max_probs.ge(p_cutoff * (classwise_acc[max_idx] / (2. - classwise_acc[max_idx]))).float()  # convex
+            masked_loss = F.nll_loss(F.log_softmax(output_u2, dim=-1), max_idx, reduction='none') * mask
             unsup_loss = masked_loss.mean()
 
             loss += unsup_loss
@@ -257,24 +271,26 @@ class fixmatch:
             loss.backward()
 
             # clamp gradients, just in case
-            for p in filter(lambda p: p.grad is not None, self.net.parameters()): p.grad.data.clamp_(min=-.1, max=.1)
+            for p in filter(lambda p: p.grad is not None, self.clf.parameters()): p.grad.data.clamp_(min=-.1, max=.1)
 
             optimizer.step()
+
+            self.it += 1
 
             if batch_idx % 10 == 0:
                 print("[Batch={:03d}] [Loss={:.2f}]".format(batch_idx, loss))
 
         return accFinal / len(loader_tr_labeled.dataset.X), train_loss
 
-    def train(self, alpha=0.1, n_epoch=10, batch_ratio=0.6):
-        # self.clf =  deepcopy(self.net)
+    def train(self, alpha=0.1, n_epoch=10):
+        self.clf =  deepcopy(self.net)
         # if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
         # self.clf = nn.parallel.DistributedDataParallel(self.clf,
         # find_unused_parameters=True,
         # )
-        # self.clf = self.clf.to(self.device)
-        parameters = self.net.parameters()
+        self.clf = nn.DataParallel(self.clf).to(self.device)
+        parameters = self.clf.parameters()
         optimizer = optim.SGD(parameters, lr=self.args.lr, weight_decay=5e-4, momentum=self.args.momentum)
 
         idxs_train = np.arange(self.n_pool)[self.idxs_lb]
@@ -311,7 +327,7 @@ class fixmatch:
                                              # sampler = DistributedSampler(train_data),
                                              worker_init_fn=self.seed_worker,
                                              generator=self.g,
-                                             **{'batch_size': int(2250 * batch_ratio), 'num_workers': 1})
+                                             **{'batch_size': int(250 * unsup_ratio), 'num_workers': 1})
             for epoch in range(n_epoch):
                 ts = time.time()
                 current_learning_rate, _ = adjust_learning_rate(optimizer, epoch, self.args.gammas, self.args.schedule,
@@ -343,17 +359,9 @@ class fixmatch:
             if self.args.save_model:
                 self.save_model()
             recorder.plot_curve(os.path.join(self.args.save_path, self.args.dataset))
-            # self.clf = self.clf.module
+            self.clf = self.clf.module
             # self.save_tta_values(self.get_tta_values())
 
 
         best_test_acc = recorder.max_accuracy(istrain=False)
         return best_test_acc
-    def seed_worker(self, worker_id):
-        """
-        To preserve reproducibility when num_workers > 1
-        """
-        # https://pytorch.org/docs/stable/notes/randomness.html
-        worker_seed = torch.initial_seed() % 2**32
-        np.random.seed(worker_seed)
-        random.seed(worker_seed)
