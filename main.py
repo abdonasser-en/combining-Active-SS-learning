@@ -140,21 +140,7 @@ args_pool = {'mnist':
                  'loader_te_args':{'batch_size': 1024, 'num_workers': 8},
                  'normalize':{'mean': (0.1307,), 'std': (0.3081,)},
                 },
-            'fashionmnist':
-                {
-                 'n_class':10,
-                'channels':1,
-                'size': 28,
-                'transform_tr': transforms.Compose([
-                                transforms.RandomHorizontalFlip(),
-                                transforms.ToTensor(), 
-                                transforms.Normalize((0.1307,), (0.3081,))]),
-                 'transform_te': transforms.Compose([transforms.ToTensor(), 
-                                    transforms.Normalize((0.1307,), (0.3081,))]),
-                 'loader_tr_args':{'batch_size': 256, 'num_workers': 1},
-                 'loader_te_args':{'batch_size': 1024, 'num_workers': 1},
-                 'normalize':{'mean': (0.1307,), 'std': (0.3081,)},
-                },
+
             'svhn':
                 {
                  'n_class':10,
@@ -187,42 +173,8 @@ args_pool = {'mnist':
                  'loader_te_args':{'batch_size': 512, 'num_workers': 8},
                  'normalize':{'mean': (0.4914, 0.4822, 0.4465), 'std': (0.2470, 0.2435, 0.2616)},
                  },
-            'gtsrb': 
-               {
-                 'n_class':43,
-                 'channels':3,
-                 'size': 32,
-                 'transform_tr': transforms.Compose([
-                                    transforms.Resize((32, 32)),
-                                    transforms.RandomCrop(size = 32, padding=4),
-                                    transforms.RandomHorizontalFlip(),
-                                    transforms.ToTensor(), 
-                                    transforms.Normalize([0.3337, 0.3064, 0.3171], [0.2672, 0.2564, 0.2629])]),
-                 'transform_te': transforms.Compose([
-                                    transforms.Resize((32, 32)),
-                                    transforms.ToTensor(), 
-                                    transforms.Normalize([0.3337, 0.3064, 0.3171], [0.2672, 0.2564, 0.2629])]),
-                 'loader_tr_args':{'batch_size': 256, 'num_workers': 8},
-                 'loader_te_args':{'batch_size': 1024, 'num_workers': 8},
-                 'normalize':{'mean': [0.3337, 0.3064, 0.3171], 'std': [0.2672, 0.2564, 0.2629]},
-                },
-            'tinyimagenet': 
-               {
-                'n_class':200,
-                'channels':3,
-                'size': 64,
-                'transform_tr': transforms.Compose([
-                                    transforms.RandomCrop(size = 64, padding=4),
-                                    transforms.RandomHorizontalFlip(),
-                                    transforms.ToTensor(), 
-                                    transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))]),
-                 'transform_te': transforms.Compose([
-                                    transforms.ToTensor(), 
-                                    transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))]),
-                 'loader_tr_args':{'batch_size': 1024, 'num_workers': 4},
-                 'loader_te_args':{'batch_size': 512, 'num_workers': 4},
-                 'normalize':{'mean': (0.485, 0.456, 0.406), 'std': (0.229, 0.224, 0.225)},
-                },
+
+
             'cifar100': 
                {
                 'n_class':100,
