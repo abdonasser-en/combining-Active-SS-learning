@@ -9,7 +9,7 @@ from torchvision import transforms
 import torch
 import csv
 import time
-
+import framework
 import al_methods
 import ssl_methods
 
@@ -18,6 +18,10 @@ from strategy_utils_framework.utils import print_log
 # import torch.distributed as dist
 
 os.environ['CUBLAS_WORKSPACE_CONFIG']= ':16:8'
+#Framework
+
+query_framwork= sorted(name for name in framework.__dict__
+                     if callable(framework.__dict__[name]))
 #AL Methods 
 query_strategies_al = sorted(name for name in al_methods.__dict__
                      if callable(al_methods.__dict__[name]))
@@ -32,8 +36,18 @@ model_name = sorted(name for name in models.__dict__
 ###############################################################################
 parser = argparse.ArgumentParser()
 # strategy
-parser.add_argument('--strategy', help='acquisition algorithm', type=str, choices=query_strategies_ssl, 
+parser.add_argument('--framework', help='choose framework for comibinaition active and semi-supervised learning',
+                     type=str, choices=query_framwork, 
                     default='rand')
+
+parser.add_argument('--ALstrat', help='choose Al method for framework',
+                     type=str, choices=query_strategies_al, 
+                    default='rand')
+parser.add_argument('--SSLstrat', help='choose ssl method for framework',
+                     type=str, choices=query_strategies_ssl, 
+                    default='rand')
+
+
 parser.add_argument('--nQuery',  type=float, default=1,
                     help='number of points to query in a batch (%)')
 parser.add_argument('--nStart', type=float, default=10,
@@ -52,15 +66,7 @@ parser.add_argument('--data_path', help='data path', type=str, default='./datase
 parser.add_argument('--save_path', help='result save save_dir', default='./save')
 parser.add_argument('--save_file', help='result save save_dir', default='result.csv')
 
-# # for gcn, designed for uncertainGCN and coreGCN
-# parser.add_argument("-n","--hidden_units", type=int, default=128,
-#                     help="Number of hidden units of the graph")
-# parser.add_argument("-r","--dropout_rate", type=float, default=0.3,
-#                     help="Dropout rate of the graph neural network")
-# parser.add_argument("-l","--lambda_loss",type=float, default=1.2, 
-#                     help="Adjustment graph loss parameter between the labeled and unlabeled")
-# parser.add_argument("-s","--s_margin", type=float, default=0.1,
-#                     help="Confidence margin of graph")
+
 
 # for ensemble based methods
 parser.add_argument('--n_ensembles', type=int, default=1, 
@@ -96,9 +102,7 @@ parser.add_argument('--save_model',
 parser.add_argument('--load_ckpt', 
                     action='store_true',
                     help='load model from memory, True or False')
-parser.add_argument('--add_imagenet', 
-                    action='store_true',
-                    help='load model from memory, True or False')
+
 
 # automatically set
 # parser.add_argument("--local_rank", type=int)
@@ -261,23 +265,15 @@ def main():
     # load specified network
     net = models.__dict__[args.model](n_class=args.n_class)
 
+    #Initi a random value of labeled data
+
     idxs_lb = np.zeros(n_pool, dtype=bool)
     idxs_tmp = np.arange(n_pool)
     np.random.shuffle(idxs_tmp)
     idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True
         
 
-    # # selection strategy
-    # if args.strategy == 'ActiveLearningByLearning': # active learning by learning (albl)
-    #     albl_list = [query_strategies.LeastConfidence(X_tr, Y_tr, X_te, Y_te, idxs_lb, net, handler, args),
-    #                     query_strategies.CoreSet(X_tr, Y_tr, X_te, Y_te, idxs_lb, net, handler, args)]
-    #     strategy = query_strategies.ActiveLearningByLearning(X_tr, Y_tr, X_te, Y_te, idxs_lb, net, handler, args, 
-    #                 strategy_list=albl_list, delta=0.1)
-    # elif args.strategy == 'WAAL': # waal
-    #     test_handler = handler
-    #     train_handler = get_wa_handler(args.dataset)
-    #     strategy =  query_strategies.WAAL(X_tr, Y_tr, X_te, Y_te, idxs_lb, net, 
-    #                                         train_handler, test_handler, args)    
+   
     # else:
     strategy = ssl_methods.__dict__[args.strategy](X_tr, Y_tr, X_te, Y_te, idxs_lb, net, handler, args)
 
