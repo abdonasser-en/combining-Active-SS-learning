@@ -22,13 +22,13 @@ class LeastConfidence:
         loader_te = DataLoader(self.handler(X, Y, 
                         transform=transform), shuffle=False, pin_memory=True, **self.args.loader_te_args)
 
-        self.net.eval()
+        self.model.eval()
 
-        probs = torch.zeros([len(Y), len(np.unique(self.Y))])
+        probs = torch.zeros([len(Y), len(np.unique(Y))])
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = x.to(self.device), y.to(self.device)
-                out = self.net(x)
+                out = self.model(x)
                 prob = F.softmax(out, dim=1)
                 probs[idxs] = prob.cpu().data
         
@@ -36,6 +36,6 @@ class LeastConfidence:
 
     def query(self, n):
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
-        probs = self.predict_prob(self.X[idxs_unlabeled], np.asarray(self.Y)[idxs_unlabeled])
+        probs = self.predict_prob(self.X_tr[idxs_unlabeled], np.asarray(self.Y_tr)[idxs_unlabeled])
         U = probs.max(1)[0]
         return idxs_unlabeled[U.sort()[1][:n]]

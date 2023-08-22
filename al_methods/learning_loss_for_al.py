@@ -141,7 +141,7 @@ class LearningLoss:
         
 
     def ll_train(self, epoch, loader_tr, optimizers,criterion):
-        self.clf.train()
+        self.model.train()
         self.loss_module.train()
         accFinal = 0.
         accLoss = 0.
@@ -166,7 +166,7 @@ class LearningLoss:
 
             loss.backward()
             # clamp gradients, just in case
-            for p in filter(lambda p: p.grad is not None, self.clf.parameters()): p.grad.data.clamp_(min=-.1, max=.1)
+            for p in filter(lambda p: p.grad is not None, self.model.parameters()): p.grad.data.clamp_(min=-.1, max=.1)
             for p in filter(lambda p: p.grad is not None, self.loss_module.parameters()): p.grad.data.clamp_(min=-.1, max=.1)
             
             optimizers['backbone'].step()
@@ -189,7 +189,7 @@ class LearningLoss:
         transform = self.args.transform_tr
         idxs_train = np.arange(self.n_pool)[self.idxs_lb]
 
-        loader_tr = DataLoader(self.handler(self.X[idxs_train], torch.Tensor(self.Y.numpy()[idxs_train]).long(),
+        loader_tr = DataLoader(self.handler(self.X_tr[idxs_train], torch.Tensor(self.Y_tr.numpy()[idxs_train]).long(),
                                             transform=transform), 
                                     shuffle=True,
                                     pin_memory=True,
@@ -199,7 +199,7 @@ class LearningLoss:
                                     **self.args.loader_tr_args)                      
 
         # n_epoch = self.args.n_epoch']
-        self.clf = self.net.apply(weight_reset).to(self.device) 
+        self.clf = self.model.apply(weight_reset).to(self.device) 
         criterion = nn.CrossEntropyLoss(reduction='none')
         optim_backbone = optim.SGD(self.clf.parameters(), lr = self.args.lr, weight_decay=5e-4, momentum=self.args.momentum)
         # sched_backbone = lr_scheduler.MultiStepLR(optim_backbone, milestones=MILESTONES)
