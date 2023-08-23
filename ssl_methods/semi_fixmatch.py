@@ -319,7 +319,7 @@ class fixmatch:
 
                 # Display simulation time
                 need_hour, need_mins, need_secs = convert_secs2time(epoch_time.avg * (n_epoch - epoch))
-                need_time = '[{} Need: {:02d}:{:02d}:{:02d}]'.format(self.args.strategy, need_hour, need_mins,
+                need_time = '[{}({}+{}) Need: {:02d}:{:02d}:{:02d}]'.format(self.args.framework,self.args.ALstrat,self.args.SSLstrat, need_hour, need_mins,
                                                                      need_secs)
 
                 # train one epoch
