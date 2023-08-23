@@ -176,6 +176,22 @@ def adjust_learning_rate(optimizer, epoch, gammas, schedule, args):
         mu = optimizer._mu
 
     return lr, mu
+
+def dice_loss(pred,target, reduction='mean'):
+    numerator = 2 * torch.mul(pred,target)
+    denominator = pred + target
+    if reduction == "mean": return (1 - (numerator + 1) / (denominator + 1)).mean()
+    elif reduction == "sum": return torch.mean((1 - (numerator + 1) / (denominator + 1)),(1,2)).sum()
+    else: return torch.mean(1 - (numerator + 1) / (denominator + 1), (1,2))
+
+def dice_score(pred,target, reduction='mean'):
+    numerator = 2 * torch.mul(pred,target)
+    denominator = pred + target
+    if reduction == "mean": return ((numerator + 1) / (denominator + 1)).mean()
+    elif reduction == "sum": return torch.mean(((numerator + 1) / (denominator + 1)),(1,2)).sum()
+    else: return torch.mean((numerator + 1) / (denominator + 1), (1,2))
+
+    
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
     def __init__(self, patience=7, verbose=False, delta=0, path='checkpoint.pt', trace_func=print):

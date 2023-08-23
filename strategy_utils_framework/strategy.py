@@ -133,7 +133,7 @@ class Strategy:
                 
                 # Display simulation time
                 need_hour, need_mins, need_secs = convert_secs2time(epoch_time.avg * (n_epoch - epoch))
-                need_time = '[{} Need: {:02d}:{:02d}:{:02d}]'.format(self.args.strategy, need_hour, need_mins, need_secs)
+                need_time = '[{}({}+{}) Need: {:02d}:{:02d}:{:02d}]'.format(self.args.framework,self.args.ALstrat,self.args.SSLstrat, need_hour, need_mins, need_secs)
                 
                 # train one epoch
                 train_acc, train_los = self._train(epoch, loader_tr, optimizer)
@@ -259,17 +259,17 @@ class Strategy:
             os.makedirs(save_path)
         labeled = len(np.arange(self.n_pool)[self.idxs_lb])
         labeled_percentage = '%.1f'%float(100*labeled/len(self.X))
-        torch.save(self.clf, os.path.join(save_path, self.args.strategy+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.pkl'))
-        print('save to ',os.path.join(save_path, self.args.strategy+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.pkl'))
-        path = os.path.join(save_path, self.args.strategy+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.npy')
+        torch.save(self.clf, os.path.join(save_path, self.args.framework+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.pkl'))
+        print('save to ',os.path.join(save_path, self.args.framework+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.pkl'))
+        path = os.path.join(save_path, self.args.framework+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.npy')
         np.save(path,self.idxs_lb)
 
     def load_model(self):
         labeled = len(np.arange(self.n_pool)[self.idxs_lb])
         labeled_percentage = '%.1f'%float(100*labeled/len(self.X))
         save_path = os.path.join(self.args.save_path,self.args.dataset+'_checkpoint')
-        self.clf = torch.load(os.path.join(save_path, self.args.strategy+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.pkl'))
-        self.idxs_lb = np.load(os.path.join(save_path, self.args.strategy+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.npy'))
+        self.clf = torch.load(os.path.join(save_path, self.args.framework+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.pkl'))
+        self.idxs_lb = np.load(os.path.join(save_path, self.args.framework+'_'+self.args.model+'_'+labeled_percentage+'_'+str(self.args.seed)+'.npy'))
 
   
 
