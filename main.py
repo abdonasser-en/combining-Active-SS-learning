@@ -12,15 +12,14 @@ import time
 import framework
 import al_methods
 import ssl_methods
-
-import models
+from models.model import Model
 from strategy_utils_framework.utils import print_log
 # import torch.distributed as dist
 
 os.environ['CUBLAS_WORKSPACE_CONFIG']= ':16:8'
 #Framework
 
-query_framwork= sorted(name for name in framework.__dict__
+query_framework= sorted(name for name in framework.__dict__
                      if callable(framework.__dict__[name]))
 #AL Methods 
 query_strategies_al = sorted(name for name in al_methods.__dict__
@@ -29,15 +28,14 @@ query_strategies_al = sorted(name for name in al_methods.__dict__
 query_strategies_ssl=sorted(name for name in ssl_methods.__dict__
                      if callable(ssl_methods.__dict__[name]))
 
-model_name = sorted(name for name in models.__dict__ 
-                    if callable(models.__dict__[name]))
+
 
 
 ###############################################################################
 parser = argparse.ArgumentParser()
 # strategy
 parser.add_argument('--framework', help='choose framework for comibinaition active and semi-supervised learning',
-                     type=str, choices=query_framwork, 
+                     type=str, choices=query_framework, 
                     default='rand')
 
 parser.add_argument('--ALstrat', help='choose Al method for framework',
@@ -48,11 +46,11 @@ parser.add_argument('--SSLstrat', help='choose ssl method for framework',
                     default='rand')
 
 
-parser.add_argument('--nQuery',  type=float, default=1,
+parser.add_argument('--nQuery',  type=float, default=10,
                     help='number of points to query in a batch (%)')
-parser.add_argument('--nStart', type=float, default=10,
+parser.add_argument('--nStart', type=float, default=1,
                     help='number of points to start (%)')
-parser.add_argument('--nEnd',type=float, default=100,
+parser.add_argument('--nEnd',type=float, default=50,
                         help = 'total number of points to query (%)')
 parser.add_argument('--nEmb',  type=int, default=256,
                         help='number of embedding dims (mlp)')
@@ -60,7 +58,7 @@ parser.add_argument('--seed', type=int, default=1,
                     help='the index of the repeated experiments', )
 
 # model and data
-parser.add_argument('--model', help='model - resnet, vgg, or mlp', type=str)
+parser.add_argument('--model', help='model - resnet50, vgg, or mlp', type=str)
 parser.add_argument('--dataset', help='dataset (non-openML)', type=str, default='')
 parser.add_argument('--data_path', help='data path', type=str, default='./datasets')
 parser.add_argument('--save_path', help='result save save_dir', default='./save')
@@ -81,7 +79,7 @@ parser.add_argument('--optimizer',
                     type=str,
                     default='SGD',
                     choices=['SGD', 'Adam', 'YF'])
-parser.add_argument('--n_epoch', type=int, default=100,
+parser.add_argument('--n_epoch', type=int, default=10,
                     help='number of training epochs in each iteration')
 parser.add_argument('--schedule',
                     type=int,
@@ -263,7 +261,7 @@ def main():
     print_log("[init={:02d}] [query={:02d}] [end={:02d}]".format(NUM_INIT_LB, NUM_QUERY, int(args.nEnd*n_pool/100)), log)
 
     # load specified network
-    net = models.__dict__[args.model](n_class=args.n_class)
+    net = Model(args.model).get_model()
 
     #Initi a random value of labeled data
 
@@ -271,78 +269,44 @@ def main():
     idxs_tmp = np.arange(n_pool)
     np.random.shuffle(idxs_tmp)
     idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True
+
+    if args.model.lower()=="resnet50":
+        net.conv1 = torch.nn.Conv2d(args_pool[args.dataset]['channels'], 64, kernel_size=7, stride=2, padding=3, bias=False)  
+        net.fc = torch.nn.Linear(2048, args_pool[args.dataset]['n_class'])  
+    elif args.model.lower()=="efficientnet_b7" :
+        net.features[0][0]=torch.nn.Conv2d(args_pool[args.dataset]['channels'], 64, kernel_size=3, stride=2, padding=1, bias=False)
+        net.classifier[1]=torch.nn.Linear(2560, args_pool[args.dataset]['n_class'])  
+
+
+
+
         
 
    
-    # else:
-    strategy = ssl_methods.__dict__[args.strategy](X_tr, Y_tr, X_te, Y_te, idxs_lb, net, handler, args)
+    frameworks = framework.__dict__[args.framework](X_tr, Y_tr, X_te, Y_te, idxs_lb, net, handler, args)
 
-    print_log('Strategy {} successfully loaded...'.format(args.strategy), log)
+    print_log('framework {} successfully loaded...'.format(args.framework), log)
 
     alpha = 2e-3
-    # load pretrained model
-    if args.load_ckpt:
-        strategy.load_model()
-        idxs_lb = strategy.idxs_lb
-    else:
-        strategy.train(alpha=alpha, n_epoch=args.n_epoch)
-    test_acc= strategy.predict(X_te, Y_te)
+    # # load pretrained model
+    # if args.load_ckpt:
+    #     framework.load_model()
+    #     idxs_lb = framework.idxs_lb
+    # else:
+    #     framework.train(alpha=alpha, n_epoch=args.n_epoch)
+    # test_acc= framework.predict(X_te, Y_te)
 
-    acc = np.zeros(NUM_ROUND+1)
-    acc[0] = test_acc
-    print_log('==>> Testing accuracy {}'.format(acc[0]), log)
+    # acc = np.zeros(NUM_ROUND+1)
+    # acc[0] = test_acc
+    # print_log('==>> Testing accuracy {}'.format(acc[0]), log)
+
+    strategy_al = al_methods.__dict__[args.ALstrat]
+    strategy_ssl=ssl_methods.__dict__[args.SSLstrat]
+    acc=frameworks.train_framework(strategy_al,strategy_ssl,NUM_ROUND,NUM_QUERY,alpha,n_epochs=args.n_epoch)
+
 
     out_file = os.path.join(args.save_path, args.save_file)
-    for rd in range(1, NUM_ROUND+1):
-        print('Round {}/{}'.format(rd, NUM_ROUND), flush=True)
-        labeled = len(np.arange(n_pool)[idxs_lb])
-        if NUM_QUERY > int(args.nEnd*n_pool/100) - labeled:
-            NUM_QUERY = int(args.nEnd*n_pool/100) - labeled
-            
-        # query
-        ts = time.time()
-        output = strategy.query(NUM_QUERY)
-        q_idxs = output
-        idxs_lb[q_idxs] = True
-        te = time.time()
-        tp = te - ts
-       
-        # update
-        strategy.update(idxs_lb)
-        best_test_acc = strategy.train(alpha=alpha, n_epoch=args.n_epoch)
 
-        t_iter = time.time() - ts
-        
-        # round accuracy
-        # test_acc = strategy.predict(X_te, Y_te)
-        acc[rd] = best_test_acc
-        print_log(str(sum(idxs_lb)) + '\t' + 'testing accuracy {}'.format(acc[rd]), log)
-
-        print_log("logging...", log)
-        with open(out_file, 'a+') as f:
-            writer = csv.writer(f, delimiter=',')
-            writer.writerow([
-                            args.strategy,
-                            args.seed,
-                            'budget',
-                            args.nEnd,
-                            'nStart', 
-                            args.nStart,
-                            'nQuery',
-                            args.nQuery,
-                            'labeled',
-                            min(args.nStart + args.nQuery*rd, args.nEnd),
-                            'accCompare',
-                            acc[0],
-                            acc[rd],
-                            acc[rd] - acc[0],
-                            't_query',
-                            tp,
-                            't_iter',
-                            t_iter
-                            ])
-
-    print_log('success!', log)
 
 
 if __name__ == '__main__':
