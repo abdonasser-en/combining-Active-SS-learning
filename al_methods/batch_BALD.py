@@ -33,24 +33,25 @@ class BatchBALD:
     
 
     def compute_NKC(self, X,Y):
-        loader_te = DataLoader(self.handler(X, Y, transform=self.args['transformTest']),
-                            shuffle=False, **self.args['loader_te_args'])
+        loader_te = DataLoader(self.handler(X, Y, transform=self.args.transform_te),
+                            shuffle=False, **self.args.loader_te_args)
         K = 10 # MC
-        self.clf.train()
+        self.model.train()
         probs = torch.zeros([K, len(Y), len(np.unique(Y))])
         with torch.no_grad():
             for i in range(K):
                 for x, y, idxs in loader_te:
                     x, y = Variable(x.to(self.device)), Variable(y.to(self.device))
-                    out, e1 = self.clf(x)
+                    out = self.model(x)
                    
                     probs[i][idxs] += F.softmax(out, dim=1).cpu().data
                     
             return probs.permute(1,0,2)
         
     def query(self, n):
+       
         idxs_unlabeled = np.arange(self.n_pool)[~self.idxs_lb]
-        prob_NKC = self.compute_NKC(self.X[idxs_unlabeled], self.Y[idxs_unlabeled])
+        prob_NKC = self.compute_NKC(self.X_tr[idxs_unlabeled], self.Y_tr[idxs_unlabeled])
         with torch.no_grad():
             batch = get_batchbald_batch(prob_NKC, n, 10000000) # Don't know the meaning of the third argument
         return idxs_unlabeled[batch.indices]
