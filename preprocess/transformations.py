@@ -6,7 +6,7 @@ import cv2
 from PIL import Image
 from skimage.color import rgb2hed, hed2rgb
 
-from randaugment import distort_image_with_randaugment
+from .randaugment import distort_image_with_randaugment
 
 
 def random_crop(image, crop_size):
