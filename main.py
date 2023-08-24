@@ -304,8 +304,14 @@ def main():
     strategy_ssl=ssl_methods.__dict__[args.SSLstrat]
     acc=frameworks.train_framework(strategy_al,strategy_ssl,NUM_ROUND,NUM_QUERY,alpha,n_epochs=args.n_epoch)
 
-
-    out_file = os.path.join(args.save_path, args.save_file)
+    folder_result_acc='results'
+    # out_file = os.path.join(args.save_path, args.save_file)
+    if not os.path.exists(folder_result_acc):
+        os.mkdir(folder_result_acc)
+        print(f"Folder '{folder_result_acc}' created succesfuly.")
+    file_path=os.path.join(folder_result_acc,args.framework+"("+args.ALstrat+args.args.SSLstrat+")")
+    np.save(acc,file_path)
+    
 
 
 
