@@ -70,7 +70,7 @@ class Strategy:
             # exit()
             optimizer.zero_grad()
 
-            out = self.net(x)
+            out,e1 = self.net(x)
             nan_mask_out = torch.isnan(y)
             if nan_mask_out.any():
                 raise RuntimeError(f"Found NAN in output indices: ", nan_mask.nonzero())
@@ -168,7 +168,7 @@ class Strategy:
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = x.to(self.device), y.to(self.device) 
-                out= self.net(x)
+                out,e1= self.net(x)
                 pred = out.max(1)[1]                
                 correct +=  (y == pred).sum().item() 
 
@@ -190,7 +190,7 @@ class Strategy:
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = x.to(self.device), y.to(self.device) 
-                out= self.net(x)
+                out,e1= self.net(x)
                 pred = out.max(1)[1]     
                 P[idxs] = pred           
                 correct +=  (y == pred).sum().item() 
@@ -208,7 +208,7 @@ class Strategy:
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = x.to(self.device), y.to(self.device)
-                out = self.net(x)
+                out,e1 = self.net(x)
                 prob = F.softmax(out, dim=1)
                 probs[idxs] = prob.cpu().data
         
@@ -227,7 +227,7 @@ class Strategy:
                 print('n_drop {}/{}'.format(i+1, n_drop))
                 for x, y, idxs in loader_te:
                     x, y = x.to(self.device), y.to(self.device) 
-                    out= self.net(x)
+                    out,e1= self.net(x)
                     prob = F.softmax(out, dim=1)
                     probs[idxs] += prob.cpu().data
         probs /= n_drop
@@ -247,7 +247,7 @@ class Strategy:
                 print('n_drop {}/{}'.format(i+1, n_drop))
                 for x, y, idxs in loader_te:
                     x, y = x.to(self.device), y.to(self.device) 
-                    out = self.net(x)
+                    out,e1 = self.net(x)
                     probs[i][idxs] += F.softmax(out, dim=1).cpu().data
             return probs
 
