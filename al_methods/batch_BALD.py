@@ -42,7 +42,7 @@ class BatchBALD:
             for i in range(K):
                 for x, y, idxs in loader_te:
                     x, y = Variable(x.to(self.device)), Variable(y.to(self.device))
-                    out = self.model(x)
+                    out,_ = self.model(x)
                    
                     probs[i][idxs] += F.softmax(out, dim=1).cpu().data
                     

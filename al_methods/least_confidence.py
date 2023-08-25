@@ -28,7 +28,7 @@ class LeastConfidence:
         with torch.no_grad():
             for x, y, idxs in loader_te:
                 x, y = x.to(self.device), y.to(self.device)
-                out = self.model(x)
+                out,e1 = self.model(x)
                 prob = F.softmax(out, dim=1)
                 probs[idxs] = prob.cpu().data
         
