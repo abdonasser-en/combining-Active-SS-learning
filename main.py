@@ -12,7 +12,7 @@ import time
 import framework
 import al_methods
 import ssl_methods
-from models.model import Model
+import models
 from strategy_utils_framework.utils import print_log
 # import torch.distributed as dist
 
@@ -261,7 +261,8 @@ def main():
     print_log("[init={:02d}] [query={:02d}] [end={:02d}]".format(NUM_INIT_LB, NUM_QUERY, int(args.nEnd*n_pool/100)), log)
 
     # load specified network
-    net = Model(args.model).get_model()
+    # net = Model(args.model).get_model()
+    
 
     #Initi a random value of labeled data
 
@@ -270,17 +271,22 @@ def main():
     np.random.shuffle(idxs_tmp)
     idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True
 
-    if args.model.lower()=="resnet50":
-        net.conv1 = torch.nn.Conv2d(args_pool[args.dataset]['channels'], 64, kernel_size=7, stride=2, padding=3, bias=False)  
-        net.fc = torch.nn.Linear(2048, args_pool[args.dataset]['n_class'])  
-    elif args.model.lower()=="efficientnet_b7" :
-        net.features[0][0]=torch.nn.Conv2d(args_pool[args.dataset]['channels'], 64, kernel_size=3, stride=2, padding=1, bias=False)
-        net.classifier[1]=torch.nn.Linear(2560, args_pool[args.dataset]['n_class'])  
+    if args.model.lower()=="resnet50"or "resnet18":
+        net=models.__dict__[args.model](n_class=args_pool[args.dataset]['n_class'])
+        net.feature_extractor.conv1 = torch.nn.Conv2d(args_pool[args.dataset]['channels'], 16,kernel_size=3,stride=1,padding=1,bias=False)  
+        net.discriminator.dis_fc2 = torch.nn.Linear(in_features=50, out_features=args_pool[args.dataset]['n_class'],bias=True)  
+    elif args.model.lower()=="mobilenet" :
+        net=models.__dict__[args.model]()
+        net.conv1=torch.nn.Conv2d(args_pool[args.dataset]['channels'],32,kernel_size=3,stride=1,padding=1,bias=False)
+        net.linear=torch.nn.Linear(in_features=1024, out_features=args_pool[args.dataset]['n_class'], bias=True) 
+    elif args.model.lower()=="vgg" :
+        net=models.__dict__[args.model](n_class=args_pool[args.dataset]['n_class'])
+        net.features[0]=torch.nn.Conv2d(args_pool[args.dataset]['channels'],64,kernel_size=3,stride=1,padding=1,bias=False)
+        net.classifier=torch.nn.Linear(in_features=512, out_features=args_pool[args.dataset]['n_class'], bias=True)
 
 
 
 
-        
 
    
     frameworks = framework.__dict__[args.framework](X_tr, Y_tr, X_te, Y_te, idxs_lb, net, handler, args)
@@ -309,7 +315,7 @@ def main():
     if not os.path.exists(folder_result_acc):
         os.mkdir(folder_result_acc)
         print(f"Folder '{folder_result_acc}' created succesfuly.")
-    file_path=os.path.join(folder_result_acc,args.framework+"("+args.ALstrat+args.SSLstrat+")")
+    file_path=os.path.join(folder_result_acc,args.framework+"("+args.ALstrat+" + "+args.SSLstrat+")")
     np.save(file_path,acc)
     
 
