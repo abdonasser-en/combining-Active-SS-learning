@@ -198,14 +198,14 @@ class fixmatch:
     Google Research, Brain Team, 2 Carnegie Mellon University
     """
 
-    def __init__(self, X, Y, X_te, Y_te, idxs_lb, net, handler, args,n_pool,device,predict,g):
+    def __init__(self, X, Y, X_te, Y_te, idxs_lb, model, handler, args,n_pool,device,predict,g):
         # super(fixmatch, self).__init__(X, Y, X_te, Y_te, idxs_lb, net, handler, args)
         self.X = X
         self.Y = Y
         self.X_te = X_te
         self.Y_te = Y_te
         self.idxs_lb = idxs_lb
-        self.net = net
+        self.net = model
         self.handler = handler
         self.args = args
         self.n_pool=n_pool
@@ -237,7 +237,7 @@ class fixmatch:
                 (inputs_u, inputs_u2), _, _ = next(iter_unlabeled)
             input_all = torch.cat((x, inputs_u, inputs_u2)).to(self.device)
             y = y.to(self.device)
-            output_all = self.net(input_all)
+            output_all,e1= self.net(input_all)
             output_sup = output_all[:len(x)]
             output_unsup = output_all[len(x):]
             output_u, output_u2 = torch.chunk(output_unsup, 2)
@@ -274,6 +274,7 @@ class fixmatch:
         # find_unused_parameters=True,
         # )
         # self.clf = self.clf.to(self.device)
+        self.net=self.net.to(self.device)
         parameters = self.net.parameters()
         optimizer = optim.SGD(parameters, lr=self.args.lr, weight_decay=5e-4, momentum=self.args.momentum)
 
@@ -298,7 +299,7 @@ class fixmatch:
                                            # sampler = DistributedSampler(train_data),
                                            worker_init_fn=self.seed_worker,
                                            generator=self.g,
-                                           **{'batch_size': 250, 'num_workers': 1})
+                                           **{'batch_size': 64, 'num_workers': 1})
         if idxs_unlabeled.shape[0] != 0:
             mean = self.args.normalize['mean']
             std = self.args.normalize['std']
@@ -311,7 +312,7 @@ class fixmatch:
                                              # sampler = DistributedSampler(train_data),
                                              worker_init_fn=self.seed_worker,
                                              generator=self.g,
-                                             **{'batch_size': int(2250 * batch_ratio), 'num_workers': 1})
+                                             **{'batch_size': int(64 * batch_ratio), 'num_workers': 1})
             for epoch in range(n_epoch):
                 ts = time.time()
                 current_learning_rate, _ = adjust_learning_rate(optimizer, epoch, self.args.gammas, self.args.schedule,
@@ -321,7 +322,7 @@ class fixmatch:
                 need_hour, need_mins, need_secs = convert_secs2time(epoch_time.avg * (n_epoch - epoch))
                 need_time = '[{}({}+{}) Need: {:02d}:{:02d}:{:02d}]'.format(self.args.framework,self.args.ALstrat,self.args.SSLstrat, need_hour, need_mins,
                                                                      need_secs)
-
+                
                 # train one epoch
                 train_acc, train_los = self._train(epoch, loader_tr_labeled, loader_tr_unlabeled, optimizer)
                 test_acc = self.predict(self.X_te, self.Y_te)

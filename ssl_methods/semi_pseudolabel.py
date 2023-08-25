@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import os
 import numpy as np
 import time
-
+import random
 from strategy_utils_framework.utils import time_string, AverageMeter, RecorderMeter, convert_secs2time, adjust_learning_rate
 from preprocess.transformations import TransformUDA
 from copy import deepcopy
@@ -53,7 +53,15 @@ class pseudolabel:
         self.device=device
         self.predict=predict
         self.g=g
-
+    def seed_worker(self, worker_id):
+        """
+        To preserve reproducibility when num_workers > 1
+        """
+        # https://pytorch.org/docs/stable/notes/randomness.html
+        worker_seed = torch.initial_seed() % 2**32
+        np.random.seed(worker_seed)
+        random.seed(worker_seed)
+ 
     def query(self, n):
         """
         n: number of data to query
@@ -65,7 +73,7 @@ class pseudolabel:
         return inds[np.random.permutation(len(inds))][:n]
 
     def _train(self, epoch, loader_tr_labeled, loader_tr_unlabeled, optimizer):
-        self.clf.train()
+        self.net.train()
         accFinal = 0.
         train_loss = 0.
         iter_unlabeled = iter(loader_tr_unlabeled)
@@ -78,8 +86,8 @@ class pseudolabel:
                 (inputs_u), _, idx = next(iter_unlabeled)
 
 
-            logits_x_lb, _ = self.clf(x)
-            logits_x_ulb_w, _ = self.clf(inputs_u)
+            logits_x_lb, _ = self.net(x)
+            logits_x_ulb_w, _ = self.net(inputs_u)
             loss = F.nll_loss(F.log_softmax(logits_x_lb, dim=-1), y, reduction='mean')   # loss for supervised learning
 
             pseudo_label = torch.softmax(logits_x_ulb_w, dim=-1)
@@ -96,7 +104,7 @@ class pseudolabel:
             loss.backward()
 
             # clamp gradients, just in case
-            for p in filter(lambda p: p.grad is not None, self.clf.parameters()): p.grad.data.clamp_(min=-.1, max=.1)
+            for p in filter(lambda p: p.grad is not None, self.net.parameters()): p.grad.data.clamp_(min=-.1, max=.1)
 
             optimizer.step()
 
@@ -106,10 +114,10 @@ class pseudolabel:
         return accFinal / len(loader_tr_labeled.dataset.X), train_loss
 
     def train(self, alpha=0.1, n_epoch=10):
-        self.clf =  deepcopy(self.net)
+        
         print("Let's use", torch.cuda.device_count(), "GPUs!")
-        self.clf = nn.DataParallel(self.clf).to(self.device)
-        parameters = self.clf.parameters()
+        self.net = nn.DataParallel(self.net).to(self.device)
+        parameters = self.net.parameters()
         optimizer = optim.SGD(parameters, lr=self.args.lr, weight_decay=5e-4, momentum=self.args.momentum)
 
         idxs_train = np.arange(self.n_pool)[self.idxs_lb]
@@ -131,7 +139,7 @@ class pseudolabel:
                                            # sampler = DistributedSampler(train_data),
                                            worker_init_fn=self.seed_worker,
                                            generator=self.g,
-                                           **{'batch_size': 250, 'num_workers': 1})
+                                           **{'batch_size': 64, 'num_workers': 1})
         if idxs_unlabeled.shape[0] != 0:
             mean = self.args.normalize['mean']
             std = self.args.normalize['std']
@@ -144,7 +152,7 @@ class pseudolabel:
                                              # sampler = DistributedSampler(train_data),
                                              worker_init_fn=self.seed_worker,
                                              generator=self.g,
-                                             **{'batch_size': int(250 * unsup_ratio), 'num_workers': 1})
+                                             **{'batch_size': int(64 * unsup_ratio), 'num_workers': 1})
             for epoch in range(n_epoch):
                 ts = time.time()
                 current_learning_rate, _ = adjust_learning_rate(optimizer, epoch, self.args.gammas, self.args.schedule,
@@ -152,7 +160,7 @@ class pseudolabel:
 
                 # Display simulation time
                 need_hour, need_mins, need_secs = convert_secs2time(epoch_time.avg * (n_epoch - epoch))
-                need_time = '[{} Need: {:02d}:{:02d}:{:02d}]'.format(self.args.strategy, need_hour, need_mins,
+                need_time = '[{} Need: {:02d}:{:02d}:{:02d}]'.format(self.args.framework, need_hour, need_mins,
                                                                      need_secs)
 
                 # train one epoch
@@ -176,7 +184,7 @@ class pseudolabel:
             if self.args.save_model:
                 self.save_model()
             recorder.plot_curve(os.path.join(self.args.save_path, self.args.dataset))
-            self.clf = self.clf.module
+            # self.net = self.net.module
             # self.save_tta_values(self.get_tta_values())
 
 
