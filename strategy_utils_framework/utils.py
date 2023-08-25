@@ -46,6 +46,9 @@ class RecorderMeter(object):
 
     def __init__(self, total_epoch):
         self.reset(total_epoch)
+        
+    def set_writer_path(self, path: str):
+        self.writer_path = path
 
     def reset(self, total_epoch):
         assert total_epoch > 0
