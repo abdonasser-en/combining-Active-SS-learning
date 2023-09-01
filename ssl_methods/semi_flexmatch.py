@@ -299,6 +299,7 @@ class flexmatch:
         # )
         # self.clf = nn.DataParallel(self.clf).to(self.device)
         self.net=self.net.to(self.device)
+        
         parameters = self.net.parameters()
         optimizer = optim.SGD(parameters, lr=self.args.lr, weight_decay=5e-4, momentum=self.args.momentum)
 
