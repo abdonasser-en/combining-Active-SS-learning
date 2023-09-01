@@ -214,42 +214,42 @@ class Strategy:
         
         return probs
 
-    def predict_prob_dropout(self, X, Y, n_drop):
-        transform = self.args.transform_te 
-        loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
-                            shuffle=False, **self.args.loader_te_args)
+    # def predict_prob_dropout(self, X, Y, n_drop):
+    #     transform = self.args.transform_te 
+    #     loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
+    #                         shuffle=False, **self.args.loader_te_args)
 
-        self.net.train()
+    #     self.net.train()
 
-        probs = torch.zeros([len(Y), len(np.unique(Y))])
-        with torch.no_grad():
-            for i in range(n_drop):
-                print('n_drop {}/{}'.format(i+1, n_drop))
-                for x, y, idxs in loader_te:
-                    x, y = x.to(self.device), y.to(self.device) 
-                    out,e1= self.net(x)
-                    prob = F.softmax(out, dim=1)
-                    probs[idxs] += prob.cpu().data
-        probs /= n_drop
+    #     probs = torch.zeros([len(Y), len(np.unique(Y))])
+    #     with torch.no_grad():
+    #         for i in range(n_drop):
+    #             print('n_drop {}/{}'.format(i+1, n_drop))
+    #             for x, y, idxs in loader_te:
+    #                 x, y = x.to(self.device), y.to(self.device) 
+    #                 out,e1= self.net(x)
+    #                 prob = F.softmax(out, dim=1)
+    #                 probs[idxs] += prob.cpu().data
+    #     probs /= n_drop
         
-        return probs
+    #     return probs
 
-    def predict_prob_dropout_split(self, X, Y, n_drop):
-        transform = self.args.transform_te
-        loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
-                            shuffle=False, **self.args.loader_te_args)
+    # def predict_prob_dropout_split(self, X, Y, n_drop):
+    #     transform = self.args.transform_te
+    #     loader_te = DataLoader(self.handler(X, Y, transform=transform), pin_memory=True,
+    #                         shuffle=False, **self.args.loader_te_args)
 
-        self.net.train()
+    #     self.net.train()
 
-        probs = torch.zeros([n_drop, len(Y), len(np.unique(Y))])
-        with torch.no_grad():
-            for i in range(n_drop):
-                print('n_drop {}/{}'.format(i+1, n_drop))
-                for x, y, idxs in loader_te:
-                    x, y = x.to(self.device), y.to(self.device) 
-                    out,e1 = self.net(x)
-                    probs[i][idxs] += F.softmax(out, dim=1).cpu().data
-            return probs
+    #     probs = torch.zeros([n_drop, len(Y), len(np.unique(Y))])
+    #     with torch.no_grad():
+    #         for i in range(n_drop):
+    #             print('n_drop {}/{}'.format(i+1, n_drop))
+    #             for x, y, idxs in loader_te:
+    #                 x, y = x.to(self.device), y.to(self.device) 
+    #                 out,e1 = self.net(x)
+    #                 probs[i][idxs] += F.softmax(out, dim=1).cpu().data
+    #         return probs
 
     
     def save_model(self):
