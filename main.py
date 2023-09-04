@@ -315,7 +315,7 @@ def main():
     if not os.path.exists(folder_result_acc):
         os.mkdir(folder_result_acc)
         print(f"Folder '{folder_result_acc}' created succesfuly.")
-    file_path=os.path.join(folder_result_acc,args.framework+"("+args.ALstrat+" + "+args.SSLstrat+")")
+    file_path=os.path.join(folder_result_acc,args.framework+"("+args.ALstrat+" + "+args.SSLstrat+")"+"("+args.model+" + "+args.dataset+"begin with : "+NUM_INIT_LB+" Number of round"+NUM_ROUND+" How many to query"+NUM_QUERY)
     np.save(file_path,acc)
     
 
