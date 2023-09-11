@@ -28,7 +28,7 @@ class Framework1(Strategy):
         acc = np.zeros(NUM_ROUND+1)
         acc[0] = test_acc
 
-        for rd in range(0, NUM_ROUND):
+        for rd in range(1, NUM_ROUND+1):
             
             if rd%2==0:
                 # Al_methods
