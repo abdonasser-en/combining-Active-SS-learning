@@ -299,7 +299,7 @@ class fixmatch:
                                            # sampler = DistributedSampler(train_data),
                                            worker_init_fn=self.seed_worker,
                                            generator=self.g,
-                                           **{'batch_size': 64, 'num_workers': 1})
+                                           **{'batch_size': 32, 'num_workers': 1})
         if idxs_unlabeled.shape[0] != 0:
             mean = self.args.normalize['mean']
             std = self.args.normalize['std']
@@ -312,7 +312,7 @@ class fixmatch:
                                              # sampler = DistributedSampler(train_data),
                                              worker_init_fn=self.seed_worker,
                                              generator=self.g,
-                                             **{'batch_size': int(64 * batch_ratio), 'num_workers': 1})
+                                             **{'batch_size': int(32 * batch_ratio), 'num_workers': 1})
             for epoch in range(n_epoch):
                 ts = time.time()
                 current_learning_rate, _ = adjust_learning_rate(optimizer, epoch, self.args.gammas, self.args.schedule,
