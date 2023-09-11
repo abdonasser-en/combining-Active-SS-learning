@@ -48,7 +48,7 @@ parser.add_argument('--SSLstrat', help='choose ssl method for framework',
 
 parser.add_argument('--nQuery',  type=float, default=10,
                     help='number of points to query in a batch (%)')
-parser.add_argument('--nStart', type=float, default=1,
+parser.add_argument('--nStart', type=float, default=10,
                     help='number of points to start (%)')
 parser.add_argument('--nEnd',type=float, default=50,
                         help = 'total number of points to query (%)')
@@ -189,7 +189,7 @@ args_pool = {'mnist':
                                 transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))]),
                 'transform_te': transforms.Compose([transforms.ToTensor(), 
                                 transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))]),
-                'loader_tr_args':{'batch_size': 2048, 'num_workers': 4},
+                'loader_tr_args':{'batch_size': 256, 'num_workers': 8},
                 'loader_te_args':{'batch_size': 512, 'num_workers': 8},
                 'normalize':{'mean': (0.5071, 0.4867, 0.4408), 'std': (0.2675, 0.2565, 0.2761)},
                 }
@@ -271,7 +271,7 @@ def main():
     np.random.shuffle(idxs_tmp)
     idxs_lb[idxs_tmp[:NUM_INIT_LB]] = True
 
-    if args.model.lower()=="resnet50"or "resnet18":
+    if args.model.lower()=="resnet50" or args.model.lower()=="resnet18":
         net=models.__dict__[args.model](n_class=args_pool[args.dataset]['n_class'])
         net.feature_extractor.conv1 = torch.nn.Conv2d(args_pool[args.dataset]['channels'], 16,kernel_size=3,stride=1,padding=1,bias=False)  
         net.discriminator.dis_fc2 = torch.nn.Linear(in_features=50, out_features=args_pool[args.dataset]['n_class'],bias=True)  
@@ -280,7 +280,7 @@ def main():
         net.conv1=torch.nn.Conv2d(args_pool[args.dataset]['channels'],32,kernel_size=3,stride=1,padding=1,bias=False)
         net.linear=torch.nn.Linear(in_features=1024, out_features=args_pool[args.dataset]['n_class'], bias=True) 
     elif args.model.lower()=="vgg" :
-        net=models.__dict__[args.model](n_class=args_pool[args.dataset]['n_class'])
+        net=models.__dict__[args.model]('VGG16')
         net.features[0]=torch.nn.Conv2d(args_pool[args.dataset]['channels'],64,kernel_size=3,stride=1,padding=1,bias=False)
         net.classifier=torch.nn.Linear(in_features=512, out_features=args_pool[args.dataset]['n_class'], bias=True)
 
@@ -315,7 +315,7 @@ def main():
     if not os.path.exists(folder_result_acc):
         os.mkdir(folder_result_acc)
         print(f"Folder '{folder_result_acc}' created succesfuly.")
-    file_path=os.path.join(folder_result_acc,args.framework+"("+args.ALstrat+" + "+args.SSLstrat+")"+"("+args.model+" + "+args.dataset+"begin with : "+NUM_INIT_LB+" Number of round"+NUM_ROUND+" How many to query"+NUM_QUERY)
+    file_path=os.path.join(folder_result_acc,args.framework+"("+args.ALstrat+" + "+args.SSLstrat+")"+"("+args.model+" + "+args.dataset+"begin with : "+str(NUM_INIT_LB)+" Number of round"+str(NUM_ROUND)+" How many to query"+str(NUM_QUERY))
     np.save(file_path,acc)
     
 
