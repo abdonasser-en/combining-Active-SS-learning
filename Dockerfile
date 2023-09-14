@@ -5,3 +5,10 @@ RUN apt update && \
     apt clean && \
     rm -rf /var/lib/apt/lists/ \
     pip3 install --no-cache-dir torch torchvision torchaudio torchmetrics 
+
+
+COPY requirements.txt /tmp/requirements.txt
+
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+
+RUN rm /tmp/requirements.txt
