@@ -93,7 +93,7 @@ class Strategy:
         return accFinal / len(loader_tr.dataset.X), train_loss
 
     
-    def train(self, alpha=0.1, n_epoch=10):
+    def train(self, alpha=0.1, n_epoch=5):
         # self.clf =  deepcopy(self.net)
         # if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
