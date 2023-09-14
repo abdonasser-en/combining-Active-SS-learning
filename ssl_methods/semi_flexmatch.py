@@ -196,20 +196,21 @@ class flexmatch:
     Google Research, Brain Team, 2 Carnegie Mellon University
     """
 
-    def __init__(self, X, Y, X_te, Y_te, idxs_lb, net, handler, args,n_pool,device,predict,g):
+    def __init__(self, X, Y, X_te, Y_te, idxs_lb, model, handler, args,n_pool,device,predict,g):
         #super(flexmatch, self).__init__(X, Y, X_te, Y_te, idxs_lb, net, handler, args)
         self.X = X
         self.Y = Y
         self.X_te = X_te
         self.Y_te = Y_te
         self.idxs_lb = idxs_lb
-        self.net = net
+        
         self.handler = handler
         self.args = args
         self.n_pool=n_pool
         self.device=device
         self.predict=predict
         self.g=g
+        self.net = model
         self.it = 0
     def seed_worker(self, worker_id):
         """
@@ -290,7 +291,7 @@ class flexmatch:
 
         return accFinal / len(loader_tr_labeled.dataset.X), train_loss
 
-    def train(self, alpha=0.1, n_epoch=10):
+    def train(self, alpha=0.1, n_epoch=5):
         # self.clf =  deepcopy(self.net)
         # if torch.cuda.device_count() > 1:
         print("Let's use", torch.cuda.device_count(), "GPUs!")
