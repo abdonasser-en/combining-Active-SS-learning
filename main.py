@@ -253,7 +253,7 @@ def main():
 
     NUM_INIT_LB = int(args.nStart*n_pool/100)
     NUM_QUERY = int(args.nQuery*n_pool/100) if args.nStart!= 100 else 0
-    NUM_ROUND = int((int(args.nEnd*n_pool/100) - NUM_INIT_LB)/ NUM_QUERY) if args.nStart!= 100 else 0
+    NUM_ROUND = 5
     if NUM_QUERY != 0:
         if (int(args.nEnd*n_pool/100) - NUM_INIT_LB)% NUM_QUERY != 0:
             NUM_ROUND += 1
